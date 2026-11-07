@@ -54,3 +54,15 @@ Auth tiene Site URL y redirección exacta `https://marcelobarcia.github.io/reemb
 - `tests/database.sql`: ejecutar como postgres; crea pruebas dentro de una transacción que termina en ROLLBACK. Verifica RLS con dos propietarios, operación atómica, duplicados, idempotencia, bloqueo de edición/borrado reembolsado, escritura directa y anulación.
 - `tests/integration.mjs`: QA contra API real con dos cuentas efímeras autorizadas. Recibe JSON por stdin (`emailA`, `emailB`, `password`, `a`, `b`) sin guardar credenciales. Prueba una carrera concurrente real, reintentos simultáneos, RLS y Storage privado. Usar solo cuentas de prueba y retirarlas después.
 - Verificación visual del flujo completo en navegador y de la interfaz móvil. Las cuentas y datos temporales se eliminan al terminar; producción queda sin gastos ficticios.
+
+## Pagos divididos (v2)
+
+Un pago original guarda el total desembolsado, comercio, fecha y boleta; sus líneas guardan monto, descripción y responsable. La suma de las líneas debe coincidir exactamente con el total. Por ejemplo, un pago de $40.122 puede distribuirse en $24.343 a una persona y $15.779 a Granero Fino. Cada línea se reembolsa por separado, sin mezclar responsables. La vista **Pagos** conserva el original y muestra todos sus estados, incluso tras reembolsos parciales o completos.
+
+Comercios y responsables ofrecen sugerencias privadas de los valores guardados. Un nombre nuevo se guarda con el pago; mayúsculas y espacios repetidos no generan duplicados. Los catálogos persisten aunque se elimine un pago.
+
+La migración `*_split_purchases_catalogs.sql` se aplica después de la inicial. Conserva cada gasto anterior como un pago de una línea y mantiene sus IDs y reembolsos. `supabase/split-upgrade.sql` es su copia legible. Nuevas tablas `purchases` y `merchants` con RLS de propietario, sin escritura directa del cliente. El guardado del pago, sus líneas y los nuevos nombres ocurre en una transacción bajo el mismo bloqueo por propietario usado para reembolsos. Una pestaña antigua puede seguir guardando gastos simples, pero no alterar un pago dividido.
+
+Si alguna línea está reembolsada, el pago completo no se edita ni elimina hasta deshacer sus reembolsos. Así se conserva el monto original y el detalle de transferencias. El CSV de **pagos originales** tiene una fila por desembolso; el CSV de **detalle** tiene una fila por línea e incluye el ID y total del pago al que pertenece.
+
+Verificación adicional: `tests/split-database.sql` prueba reparto, total exacto, rollback ante errores, nombres canónicos, reembolso parcial, conservación del original, RLS y compatibilidad con clientes anteriores, todo dentro de una transacción con ROLLBACK.

@@ -47,7 +47,7 @@ do $$begin
  begin
   perform public.mutate('save_expense','{"id":"eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee","responsible_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","amount":1,"merchant":"Ajeno","description":"Ajeno","expense_date":"2026-11-07"}');
   raise exception 'FALLO: editar ajeno';
- exception when raise_exception then if sqlerrm like 'FALLO:%' then raise;end if;end;
+ exception when insufficient_privilege then null; when raise_exception then if sqlerrm like 'FALLO:%' then raise;end if;end;
  begin
   insert into public.responsibles(owner_id,name) values('11111111-1111-4111-8111-111111111111','Ataque');
   raise exception 'FALLO: propietario falso';
