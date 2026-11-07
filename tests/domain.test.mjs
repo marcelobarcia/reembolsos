@@ -1,0 +1,6 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {today,csv,selectedExpenses,group,sum,month} from '../src/domain.js';
+test('fecha civil chilena cerca de medianoche y cambios de horario',()=>{assert.equal(today(new Date('2026-11-07T02:00:00Z')),'2026-11-06');assert.equal(today(new Date('2026-07-07T03:00:00Z')),'2026-07-06')});
+test('CSV Excel lleva BOM, separador local, escape y protección de fórmulas',()=>{assert.equal(csv([['Monto','Descripción'],[1200,'=2+2'],[2,'"hola";\nnuevo']]),'\uFEFF"Monto";"Descripción"\r\n"1200";"\'=2+2"\r\n"2";"""hola"";\nnuevo"')});
+test('selección excluye reembolsados y rechaza responsables mezclados',()=>{const xs=[{id:'1',responsible_id:'a',amount:2},{id:'2',responsible_id:'b',amount:3},{id:'3',responsible_id:'a',amount:5,reimbursement_id:'p'}];assert.throws(()=>selectedExpenses(xs,new Set(['1','2'])));assert.deepEqual(selectedExpenses(xs,new Set(['1','3'])),[xs[0]])});
+test('consolidado usa mes de gasto y sumas enteras',()=>{const xs=[{expense_date:'2026-10-31',amount:1000},{expense_date:'2026-11-01',amount:2000}];const groups=group(xs,x=>month(x.expense_date));assert.equal(sum(groups['2026-10']),1000);assert.equal(sum(xs),3000)});
